@@ -1,0 +1,45 @@
+name: Generate Manifest
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build manifest.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+
+          function getFiles(dir) {
+            if (!fs.existsSync(dir)) return [];
+            return fs.readdirSync(dir)
+              .filter(f => /\.(webp|jpg|jpeg|png)$/i.test(f))
+              .sort();
+          }
+
+          const manifest = {
+            hero:    getFiles('A-1'),
+            half:    getFiles('A0'),
+            quarter: getFiles('A1-4')
+          };
+
+          fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
+          console.log('Manifest written:', JSON.stringify(manifest, null, 2));
+          "
+
+      - name: Commit manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git diff --staged --quiet || git commit -m "Auto-update manifest.json"
+          git push
